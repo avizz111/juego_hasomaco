@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONFLICT DOOM — Los 4 Niveles del Conflicto</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --blood: #c0392b;
+    --fire: #e67e22;
+    --acid: #27ae60;
+    --neon: #00ff88;
+    --dark: #0a0a0a;
+    --panel: #111111;
+    --hud: #1a0000;
+    --text: #f0e6d3;
+    --dim: #888;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  #game-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark);
+  }
+  .screen.active { display: flex; }
+
+  /* ===== TITLE SCREEN ===== */
+  #title-screen {
+    background: radial-gradient(ellipse at center, #1a0000 0%, #000 70%);
+    gap: 24px;
+  }
+
+  .title-skull {
+    font-size: 80px;
+    animation: pulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px #c0392b);
+  }
+
+  @keyframes pulse {
+    0%,100% { transform: scale(1); filter: drop-shadow(0 0 20px #c0392b); }
+    50% { transform: scale(1.08); filter: drop-shadow(0 0 40px #e74c3c); }
+  }
+
+  .game-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(18px, 4vw, 36px);
+    color: var(--blood);
+    text-shadow: 3px 3px 0 #000, 0 0 30px #c0392b;
+    text-align: center;
+    line-height: 1.4;
+    letter-spacing: 2px;
+  }
+
+  .subtitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(7px, 1.5vw, 11px);
+    color: var(--fire);
+    text-align: center;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .title-desc {
+    font-size: 13px;
+    color: var(--dim);
+    text-align: center;
+    max-width: 480px;
+    line-height: 1.7;
+    padding: 0 20px;
+  }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    padding: 16px 32px;
+    border: 2px solid var(--blood);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--blood);
+    transform: translateX(-100%);
+    transition: transform .15s;
+    z-index: -1;
+  }
+  .btn:hover::before { transform: translateX(0); }
+  .btn:hover { color: #fff; text-shadow: 0 0 10px #fff; }
+  .btn:active { transform: scale(.96); }
+
+  .level-select-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 680px;
+    width: 90vw;
+    padding: 10px;
+  }
+
+  .level-card {
+    border: 2px solid #333;
+    background: #0d0d0d;
+    padding: 18px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .level-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .level-card:hover { transform: scale(1.03); }
+  .level-card:hover::after { opacity: 1; }
+
+  .level-card.l1 { border-color: #9b59b6; }
+  .level-card.l1::after { background: rgba(155,89,182,.08); }
+  .level-card.l2 { border-color: #e74c3c; }
+  .level-card.l2::after { background: rgba(231,76,60,.08); }
+  .level-card.l3 { border-color: #f39c12; }
+  .level-card.l3::after { background: rgba(243,156,18,.08); }
+  .level-card.l4 { border-color: #27ae60; }
+  .level-card.l4::after { background: rgba(39,174,96,.08); }
+
+  .level-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  .level-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 1.5vw, 11px);
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .level-card.l1 .level-name { color: #c39bd3; }
+  .level-card.l2 .level-name { color: #e74c3c; }
+  .level-card.l3 .level-name { color: #f39c12; }
+  .level-card.l4 .level-name { color: #27ae60; }
+  .level-desc { font-size: 10px; color: #666; line-height: 1.6; }
+
+  .locked-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #444;
+  }
+
+  /* ===== GAME SCREEN ===== */
+  #game-screen {
+    display: none;
+    flex-direction: column;
+    background: #000;
+  }
+  #game-screen.active { display: flex; }
+
+  /* ===== 3D VIEWPORT ===== */
+  #viewport-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #viewport {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    height: 80px;
+    background: var(--hud);
+    border-top: 3px solid var(--blood);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+
+  .hud-face {
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--blood);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    background: #1a0000;
+    flex-shrink: 0;
+  }
+
+  .hud-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+  }
+  .hud-stat-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--dim);
+    margin-bottom: 4px;
+  }
+  .hud-stat-val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: var(--neon);
+  }
+  .hud-stat-val.red { color: var(--blood); }
+  .hud-stat-val.orange { color: var(--fire); }
+
+  #hud-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+  #level-title-hud {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--fire);
+    text-transform: uppercase;
+  }
+  #level-subtitle-hud {
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .hud-ammo-bar {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    max-width: 200px;
+  }
+  .ammo-pip {
+    width: 8px;
+    height: 14px;
+    background: var(--neon);
+    transition: background .1s;
+  }
+  .ammo-pip.used { background: #1a3320; }
+
+  /* ===== WEAPON ===== */
+  #weapon-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  #weapon-img {
+    font-size: 80px;
+    display: block;
+    text-align: center;
+    transition: transform .08s;
+    filter: drop-shadow(0 0 15px rgba(255,100,0,.5));
+  }
+
+  /* ===== CROSSHAIR ===== */
+  #crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 10;
+  }
+  #crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255,255,255,.7);
+  }
+  #crosshair::before { width: 16px; height: 2px; top: -1px; left: -8px; }
+  #crosshair::after { width: 2px; height: 16px; top: -8px; left: -1px; }
+
+  /* ===== DAMAGE FLASH ===== */
+  #damage-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(192,57,43,0);
+    pointer-events: none;
+    transition: background .05s;
+    z-index: 20;
+  }
+  #damage-flash.hit { background: rgba(192,57,43,.4); }
+
+  /* ===== MESSAGE BOX ===== */
+  #msg-box {
+    position: absolute;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.88);
+    border: 2px solid var(--fire);
+    padding: 14px 22px;
+    max-width: 480px;
+    width: 90vw;
+    z-index: 30;
+    display: none;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  #msg-box.visible { display: block; }
+  #msg-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--fire);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* ===== MINIMAP ===== */
+  #minimap {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 120px;
+    height: 120px;
+    border: 2px solid #333;
+    background: rgba(0,0,0,.7);
+    z-index: 15;
+  }
+
+  /* ===== LEVEL INTRO ===== */
+  #level-intro {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    gap: 16px;
+    padding: 30px;
+    transition: opacity .5s;
+  }
+  #level-intro.hidden { opacity: 0; pointer-events: none; }
+
+  #intro-level-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 4px;
+  }
+  #intro-level-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 3vw, 22px);
+    text-align: center;
+    line-height: 1.5;
+  }
+  #intro-icon { font-size: 64px; }
+  #intro-desc {
+    font-size: 12px;
+    color: #aaa;
+    max-width: 440px;
+    text-align: center;
+    line-height: 1.7;
+    border-left: 3px solid var(--fire);
+    padding-left: 14px;
+  }
+  #intro-tip {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 10px;
+  }
+  #intro-start-btn {
+    margin-top: 10px;
+  }
+
+  /* ===== LEVEL COMPLETE ===== */
+  #level-complete {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.92);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    gap: 16px;
+    padding: 30px;
+  }
+  #level-complete.visible { display: flex; }
+
+  .complete-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(16px, 3vw, 24px);
+    color: var(--neon);
+    text-shadow: 0 0 20px var(--neon);
+    text-align: center;
+  }
+  .complete-fact {
+    background: #0d1a0d;
+    border: 2px solid var(--neon);
+    padding: 16px 22px;
+    max-width: 480px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #ccc;
+    text-align: center;
+  }
+  .complete-fact strong { color: var(--neon); }
+
+  /* ===== WIN SCREEN ===== */
+  #win-screen {
+    background: radial-gradient(ellipse at center, #001a00 0%, #000 70%);
+    gap: 20px;
+  }
+  .win-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(16px, 4vw, 28px);
+    color: var(--neon);
+    text-shadow: 0 0 30px var(--neon);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .win-summary {
+    max-width: 560px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 90vw;
+  }
+  .win-card {
+    border: 1px solid #333;
+    background: #0a0a0a;
+    padding: 14px;
+    font-size: 10px;
+    line-height: 1.7;
+    color: #aaa;
+  }
+  .win-card-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    margin-bottom: 6px;
+  }
+
+  /* ===== MOBILE CONTROLS ===== */
+  #mobile-controls {
+    position: absolute;
+    bottom: 88px;
+    left: 0;
+    right: 0;
+    display: none;
+    z-index: 25;
+  }
+  @media (max-width: 768px) {
+    #mobile-controls { display: flex; }
+    body { overflow: hidden; }
+  }
+  .mobile-dpad {
+    position: absolute;
+    left: 20px;
+    bottom: 10px;
+    display: grid;
+    grid-template-columns: 44px 44px 44px;
+    grid-template-rows: 44px 44px 44px;
+    gap: 4px;
+  }
+  .dpad-btn {
+    background: rgba(0,0,0,.6);
+    border: 2px solid #333;
+    color: #fff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  .dpad-btn:active { background: rgba(192,57,43,.4); border-color: var(--blood); }
+  .dpad-center { grid-column: 2; grid-row: 2; font-size: 10px; color: #555; }
+
+  .mobile-action-btns {
+    position: absolute;
+    right: 20px;
+    bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .action-btn {
+    width: 60px;
+    height: 60px;
+    background: rgba(192,57,43,.3);
+    border: 2px solid var(--blood);
+    border-radius: 50%;
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  .action-btn:active { background: rgba(192,57,43,.7); }
+
+  /* Scan lines effect */
+  #game-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.08) 2px,
+      rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+
+  <!-- TITLE SCREEN -->
+  <div id="title-screen" class="screen active">
+    <div class="title-skull">💀</div>
+    <div class="game-title">CONFLICT<br>DOOM</div>
+    <div class="subtitle">Los 4 Niveles del Conflicto</div>
+    <div class="title-desc">
+      Enfréntate a los 4 niveles del conflicto humano. Cada nivel representa una dimensión del conflicto que debes comprender y superar. ¿Tienes lo que se necesita?
+    </div>
+    <button class="btn" onclick="showLevelSelect()">▶ COMENZAR MISIÓN</button>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div id="select-screen" class="screen">
+    <div class="subtitle" style="margin-bottom:16px; color: var(--dim);">SELECCIONA NIVEL</div>
+    <div class="level-select-grid" id="level-grid">
+      <div class="level-card l1" onclick="startLevel(0)">
+        <div class="level-num">NIVEL 1</div>
+        <div class="level-name">INTRAPERSONAL</div>
+        <div class="level-desc">El conflicto dentro de tu propia mente. Pensamientos y emociones en guerra.</div>
+      </div>
+      <div class="level-card l2" id="card-2" onclick="startLevel(1)">
+        <div class="level-num">NIVEL 2</div>
+        <div class="level-name">INTERPERSONAL</div>
+        <div class="level-desc">Choque entre personas. Diferencias de personalidad e intereses.</div>
+        <div class="locked-overlay" id="lock-2">🔒 BLOQUEADO</div>
+      </div>
+      <div class="level-card l3" id="card-3" onclick="startLevel(2)">
+        <div class="level-num">NIVEL 3</div>
+        <div class="level-name">INTRAGRUPAL</div>
+        <div class="level-desc">Conflictos dentro de un mismo equipo o departamento.</div>
+        <div class="locked-overlay" id="lock-3">🔒 BLOQUEADO</div>
+      </div>
+      <div class="level-card l4" id="card-4" onclick="startLevel(3)">
+        <div class="level-num">NIVEL 4</div>
+        <div class="level-name">INTERGRUPAL</div>
+        <div class="level-desc">Enfrentamiento entre grupos, organizaciones o comunidades.</div>
+        <div class="locked-overlay" id="lock-4">🔒 BLOQUEADO</div>
+      </div>
+    </div>
+    <br>
+    <button class="btn" onclick="showScreen('title-screen')" style="font-size:8px; padding:10px 20px;">◀ MENÚ</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="screen">
+    <!-- 3D Viewport -->
+    <div id="viewport-wrap">
+      <canvas id="viewport"></canvas>
+      <div id="crosshair"></div>
+      <div id="damage-flash"></div>
+      <canvas id="minimap"></canvas>
+
+      <!-- Level Intro Overlay -->
+      <div id="level-intro">
+        <div id="intro-level-num">NIVEL 1 — EPISODIO I</div>
+        <div id="intro-icon">🧠</div>
+        <div id="intro-level-name">CONFLICTO INTRAPERSONAL</div>
+        <div id="intro-desc">El campo de batalla más íntimo: tu propia mente.</div>
+        <div id="intro-tip">WASD / Flechas = Mover &nbsp;|&nbsp; Mouse = Girar &nbsp;|&nbsp; CLICK = Disparar &nbsp;|&nbsp; E = Interactuar</div>
+        <button class="btn" id="intro-start-btn" onclick="dismissIntro()">▶ ENTRAR AL NIVEL</button>
+      </div>
+
+      <!-- Level Complete Overlay -->
+      <div id="level-complete">
+        <div class="complete-title">✓ NIVEL COMPLETADO</div>
+        <div class="complete-fact" id="complete-fact-text">
+          Cargando dato…
+        </div>
+        <button class="btn" id="next-level-btn" onclick="nextLevel()">SIGUIENTE NIVEL ▶</button>
+        <button class="btn" onclick="showLevelSelect()" style="font-size:8px; padding:10px 20px; margin-top:-8px;">◀ MAPA</button>
+      </div>
+
+      <!-- Weapon -->
+      <div id="weapon-wrap">
+        <span id="weapon-img">🔫</span>
+      </div>
+
+      <!-- Message Box -->
+      <div id="msg-box">
+        <div id="msg-title">INFO</div>
+        <div id="msg-content">…</div>
+      </div>
+
+      <!-- Mobile Controls -->
+      <div id="mobile-controls">
+        <div class="mobile-dpad">
+          <div></div>
+          <div class="dpad-btn" id="btn-w">▲</div>
+          <div></div>
+          <div class="dpad-btn" id="btn-a">◀</div>
+          <div class="dpad-btn dpad-center">+</div>
+          <div class="dpad-btn" id="btn-d">▶</div>
+          <div></div>
+          <div class="dpad-btn" id="btn-s">▼</div>
+          <div></div>
+        </div>
+        <div class="mobile-action-btns">
+          <div class="action-btn" id="btn-shoot">FIRE</div>
+          <div class="action-btn" id="btn-interact" style="background:rgba(0,100,200,.3); border-color:#3498db; font-size:7px;">INTER<br>ACT</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-face" id="hud-face">😐</div>
+      <div class="hud-stat">
+        <div class="hud-stat-label">VIDA</div>
+        <div class="hud-stat-val red" id="hud-health">100</div>
+      </div>
+      <div class="hud-stat">
+        <div class="hud-stat-label">ENEMIGOS</div>
+        <div class="hud-stat-val orange" id="hud-kills">0</div>
+      </div>
+      <div id="hud-info">
+        <div id="level-title-hud">NIVEL 1</div>
+        <div id="level-subtitle-hud">Intrapersonal</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div class="hud-stat-label" style="font-size:7px; color:var(--dim); font-family:'Press Start 2P',mono">MUNICIÓN</div>
+        <div class="hud-ammo-bar" id="ammo-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="win-screen" class="screen">
+    <div class="win-title">🏆 MISIÓN<br>COMPLETADA</div>
+    <div class="subtitle" style="color: var(--neon);">LOS 4 NIVELES DEL CONFLICTO DOMINADOS</div>
+    <div class="win-summary">
+      <div class="win-card">
+        <div class="win-card-title" style="color:#c39bd3">INTRAPERSONAL</div>
+        Conflicto dentro de una persona. Luchas entre pensamientos, valores y emociones contradictorias.
+      </div>
+      <div class="win-card">
+        <div class="win-card-title" style="color:#e74c3c">INTERPERSONAL</div>
+        Entre dos o más personas. Causado por diferencias de personalidad, comunicación o intereses.
+      </div>
+      <div class="win-card">
+        <div class="win-card-title" style="color:#f39c12">INTRAGRUPAL</div>
+        Dentro de un mismo grupo. Tensiones internas que afectan la cohesión y productividad del equipo.
+      </div>
+      <div class="win-card">
+        <div class="win-card-title" style="color:#27ae60">INTERGRUPAL</div>
+        Entre grupos distintos. Rivalidades, recursos compartidos y diferencias ideológicas entre comunidades.
+      </div>
+    </div>
+    <div style="font-size:11px; color:#666; text-align:center; max-width:480px; line-height:1.7">
+      Reconocer el nivel de un conflicto es el primer paso para resolverlo. Cada nivel requiere estrategias distintas de manejo y mediación.
+    </div>
+    <button class="btn" onclick="showScreen('title-screen')">▶ JUGAR DE NUEVO</button>
+  </div>
+
+</div>
+
+<script>
+// ==========================================
+// DOOM-STYLE RAYCASTER ENGINE
+// ==========================================
+
+const LEVELS = [
+  {
+    id: 0,
+    name: "INTRAPERSONAL",
+    subtitle: "El Conflicto Interno",
+    icon: "🧠",
+    color: "#9b59b6",
+    weapon: "🔫",
+    face: "😰",
+    faceOk: "😤",
+    faceDead: "😵",
+    intro: "El conflicto INTRAPERSONAL ocurre dentro de una misma persona. Son las batallas entre tus pensamientos, valores, deseos y miedos. Aquí, los enemigos son tus propias dudas y contradicciones internas.",
+    enemies: [
+      { name: "La Duda", emoji: "😨", hp: 2, dmg: 15, info: "La duda paraliza la toma de decisiones. Es uno de los conflictos internos más comunes.", color: "#9b59b6" },
+      { name: "El Miedo", emoji: "😱", hp: 3, dmg: 20, info: "El miedo irracional genera conflicto interno y evita que alcancemos nuestro potencial.", color: "#8e44ad" },
+      { name: "La Culpa", emoji: "😢", hp: 2, dmg: 10, info: "La culpa excesiva crea un conflicto entre quien somos y quien creemos debería ser.", color: "#6c3483" },
+      { name: "La Ansiedad", emoji: "😰", hp: 4, dmg: 25, info: "La ansiedad es el jefe final del conflicto intrapersonal: un estado crónico de conflicto interno.", color: "#4a235a" },
+    ],
+    completeFact: "<strong>Dato clave:</strong> El conflicto intrapersonal es la raíz de muchos otros conflictos. Cuando no resolvemos nuestras contradicciones internas, las proyectamos hacia afuera. La autoconciencia y la inteligencia emocional son las herramientas principales para este tipo de conflicto.",
+    mapLayout: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+      [1,0,1,1,0,0,1,0,1,1,1,0,1,1,0,1],
+      [1,0,1,0,0,0,0,0,0,0,1,0,0,1,0,1],
+      [1,0,0,0,1,0,1,1,0,0,0,0,0,0,0,1],
+      [1,0,1,0,0,0,0,0,0,1,1,1,0,1,0,1],
+      [1,0,1,1,0,1,0,1,0,0,0,1,0,1,0,1],
+      [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+      [1,0,1,0,1,1,1,0,1,0,0,1,1,0,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,0,1,1,1,0,1,1,0,1,1,0,1,1,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
+  {
+    id: 1,
+    name: "INTERPERSONAL",
+    subtitle: "El Choque Entre Personas",
+    icon: "👥",
+    color: "#e74c3c",
+    weapon: "🗡️",
+    face: "😠",
+    faceOk: "😤",
+    faceDead: "😵",
+    intro: "El conflicto INTERPERSONAL surge entre dos o más personas. Las diferencias de personalidad, comunicación deficiente y choques de intereses son las causas más comunes. En este nivel enfrentarás arquetipos de conflictos relacionales.",
+    enemies: [
+      { name: "El Ego", emoji: "😤", hp: 3, dmg: 18, info: "El ego inflado es fuente de conflicto interpersonal. Impide escuchar y empatizar con los demás.", color: "#c0392b" },
+      { name: "Malentendido", emoji: "😕", hp: 2, dmg: 12, info: "La comunicación deficiente genera malentendidos que escalan rápidamente a conflictos mayores.", color: "#e74c3c" },
+      { name: "Celos", emoji: "😒", hp: 2, dmg: 15, info: "Los celos y la envidia distorsionan las relaciones interpersonales y generan desconfianza.", color: "#922b21" },
+      { name: "Agresión", emoji: "😡", hp: 5, dmg: 30, info: "La agresión es la manifestación más destructiva del conflicto interpersonal. Requiere mediación.", color: "#7b241c" },
+    ],
+    completeFact: "<strong>Dato clave:</strong> El 90% de los conflictos interpersonales pueden resolverse con comunicación asertiva. Las técnicas de escucha activa, la empatía y la negociación colaborativa (ganar-ganar) son fundamentales. El modelo Thomas-Kilmann identifica 5 estilos de manejo: competir, ceder, evitar, comprometerse y colaborar.",
+    mapLayout: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,0,1,0,0,0,1,1,1,1,0,0,0,1,0,1],
+      [1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,1,0,1,1,1,0,1,1,0,1,1,1,0,1,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,0,1,1,0,1,1,0,1,1,0,1,1,0,0,1],
+      [1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1],
+      [1,0,0,0,1,1,1,0,1,1,1,0,0,0,0,1],
+      [1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,1],
+      [1,0,0,0,1,0,1,1,1,0,1,0,0,0,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
+  {
+    id: 2,
+    name: "INTRAGRUPAL",
+    subtitle: "Conflicto Dentro del Equipo",
+    icon: "🏢",
+    color: "#f39c12",
+    weapon: "⚡",
+    face: "😤",
+    faceOk: "😎",
+    faceDead: "😵",
+    intro: "El conflicto INTRAGRUPAL ocurre dentro de un mismo grupo, equipo o departamento. Las luchas de poder internas, los roles ambiguos y las diferencias de opinión entre miembros del mismo bando son sus principales causas.",
+    enemies: [
+      { name: "Chisme", emoji: "🗣️", hp: 2, dmg: 10, info: "Los rumores y chismes destruyen la confianza dentro de los equipos y crean facciones internas.", color: "#d68910" },
+      { name: "Rol Ambiguo", emoji: "❓", hp: 3, dmg: 15, info: "Cuando los roles y responsabilidades no están claros, los conflictos internos son inevitables.", color: "#b7770d" },
+      { name: "Lucha de Poder", emoji: "👑", hp: 4, dmg: 22, info: "Las luchas internas por el liderazgo fragmentan al grupo y reducen su efectividad colectiva.", color: "#9a7d0a" },
+      { name: "Groupthink", emoji: "🐑", hp: 5, dmg: 28, info: "El pensamiento grupal es un conflicto silencioso: suprimir ideas disidentes genera resentimiento.", color: "#7d6608" },
+    ],
+    completeFact: "<strong>Dato clave:</strong> El conflicto intragrupal puede ser funcional (promueve innovación) o disfuncional (paraliza al equipo). La clave está en canalizar las diferencias de forma constructiva. Equipos con conflicto cognitivo (ideas) pero no afectivo (emocional) son los más innovadores.",
+    mapLayout: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+      [1,0,1,1,1,1,1,0,1,0,1,1,1,1,0,1],
+      [1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1],
+      [1,0,1,0,1,1,0,1,1,0,1,1,0,1,0,1],
+      [1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,1,1,0,0,0,1,0,0,1,0,0,0,1,1,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,0,1,1,0,1,1,1,1,1,1,0,1,1,0,1],
+      [1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1],
+      [1,0,0,0,1,1,0,1,1,0,1,1,0,0,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
+  {
+    id: 3,
+    name: "INTERGRUPAL",
+    subtitle: "Guerra Entre Grupos",
+    icon: "⚔️",
+    color: "#27ae60",
+    weapon: "💣",
+    face: "😡",
+    faceOk: "😤",
+    faceDead: "😵",
+    intro: "El conflicto INTERGRUPAL es el enfrentamiento entre dos o más grupos, organizaciones o comunidades distintas. La competencia por recursos, las diferencias ideológicas y el tribalismo son sus motores. Es el tipo de conflicto con mayor escala e impacto social.",
+    enemies: [
+      { name: "Tribalismo", emoji: "🛡️", hp: 3, dmg: 20, info: "El tribalismo crea un 'nosotros vs ellos' que polariza y dificulta el diálogo entre grupos.", color: "#1e8449" },
+      { name: "Prejuicio", emoji: "🚫", hp: 3, dmg: 18, info: "Los prejuicios grupales alimentan discriminación y conflictos intergrupales persistentes.", color: "#196f3d" },
+      { name: "Competencia", emoji: "🏆", hp: 4, dmg: 22, info: "La competencia por recursos escasos es la causa más común del conflicto intergrupal.", color: "#145a32" },
+      { name: "Ideología", emoji: "💢", hp: 6, dmg: 35, info: "Las diferencias ideológicas profundas entre grupos son los conflictos más difíciles de resolver.", color: "#0b5345" },
+    ],
+    completeFact: "<strong>Dato clave:</strong> El conflicto intergrupal puede escalar hasta el nivel societal. La Teoría de la Identidad Social (Tajfel & Turner) explica cómo las personas se definen por sus grupos y atacan a los 'externos'. La superación de metas compartidas (Sherif) y el contacto intergrupal son estrategias probadas de resolución.",
+    mapLayout: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1],
+      [1,0,1,1,1,0,0,0,0,0,0,1,1,1,0,1],
+      [1,0,1,0,0,0,1,0,0,1,0,0,0,1,0,1],
+      [1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,0,1,0,0,0,1,1,1,1,0,0,0,1,0,1],
+      [1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+      [1,0,1,0,0,0,1,1,1,1,0,0,0,1,0,1],
+      [1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,0,1,0,0,0,1,0,0,1,0,0,0,1,0,1],
+      [1,0,1,1,1,0,0,0,0,0,0,1,1,1,0,1],
+      [1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  }
+];
+
+// ========================
+// GAME STATE
+// ========================
+let currentLevel = 0;
+let unlockedLevels = 0;
+let gameActive = false;
+let introShown = false;
+
+let player = { x:1.5, y:1.5, angle:0, health:100, ammo:15, maxAmmo:15, kills:0, totalKills:0 };
+let enemies = [];
+let particles = [];
+let shootCooldown = 0;
+let msgTimer = 0;
+let weaponBob = 0;
+let weaponFire = 0;
+
+const MOVE_SPEED = 0.06;
+const ROT_SPEED  = 0.045;
+const keys = {};
+
+// ========================
+// CANVAS / RENDERER
+// ========================
+let canvas, ctx, minimapCanvas, mmCtx;
+let W = 0, H = 0;
+
+function initCanvas() {
+  canvas = document.getElementById('viewport');
+  ctx = canvas.getContext('2d');
+  minimapCanvas = document.getElementById('minimap');
+  mmCtx = minimapCanvas.getContext('2d');
+  minimapCanvas.width = 120; minimapCanvas.height = 120;
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+}
+
+function resizeCanvas() {
+  const wrap = document.getElementById('viewport-wrap');
+  // When game-screen is hidden clientWidth/Height = 0, fall back to window size minus HUD
+  W = wrap.clientWidth || window.innerWidth;
+  H = wrap.clientHeight || (window.innerHeight - 80);
+  canvas.width = W;
+  canvas.height = H;
+}
+
+// ========================
+// MAP & ENEMY PLACEMENT
+// ========================
+function buildLevel(lvlIdx) {
+  const lvl = LEVELS[lvlIdx];
+  const map = lvl.mapLayout;
+  enemies = [];
+
+  // Find open spaces to place enemies
+  let openCells = [];
+  for (let row = 1; row < map.length-1; row++) {
+    for (let col = 1; col < map[row].length-1; col++) {
+      if (map[row][col] === 0) openCells.push({x: col+0.5, y: row+0.5});
+    }
+  }
+  openCells.sort(()=>Math.random()-.5);
+
+  // Place enemies — 3 of each type, skip player start area
+  let placed = 0;
+  let eIdx = 0;
+  for (let cell of openCells) {
+    if (Math.hypot(cell.x - 1.5, cell.y - 1.5) < 2.5) continue;
+    const etype = lvl.enemies[eIdx % lvl.enemies.length];
+    enemies.push({
+      x: cell.x, y: cell.y,
+      hp: etype.hp, maxHp: etype.hp,
+      dmg: etype.dmg,
+      type: eIdx % lvl.enemies.length,
+      emoji: etype.emoji,
+      name: etype.name,
+      info: etype.info,
+      color: etype.color,
+      state: 'idle', // idle, chase, attack
+      stateTimer: 0,
+      hitFlash: 0,
+      active: true,
+    });
+    placed++;
+    eIdx++;
+    if (placed >= 10) break;
+  }
+
+  player.x = 1.5; player.y = 1.5;
+  player.angle = 0;
+  player.health = 100;
+  player.ammo = player.maxAmmo;
+  player.kills = 0;
+  particles = [];
+  shootCooldown = 0;
+  msgTimer = 0;
+  updateHUD();
+}
+
+function getMap() { return LEVELS[currentLevel].mapLayout; }
+
+function isWall(x, y) {
+  const map = getMap();
+  const mx = Math.floor(x), my = Math.floor(y);
+  if (my < 0 || my >= map.length || mx < 0 || mx >= map[0].length) return true;
+  return map[my][mx] === 1;
+}
+
+// ========================
+// RAYCASTER
+// ========================
+function castRays() {
+  const map = getMap();
+  const lvl = LEVELS[currentLevel];
+  const FOV = Math.PI / 2.8;
+  const numRays = Math.floor(W / 2);
+  const halfH = H / 2;
+
+  // Draw ceiling & floor
+  ctx.fillStyle = '#0a0008';
+  ctx.fillRect(0, 0, W, halfH);
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, halfH, W, halfH);
+
+  // Floor gradient
+  const flGrad = ctx.createLinearGradient(0, halfH, 0, H);
+  flGrad.addColorStop(0, 'rgba(20,10,0,.8)');
+  flGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = flGrad;
+  ctx.fillRect(0, halfH, W, halfH);
+
+  const zBuffer = new Float32Array(W);
+
+  for (let i = 0; i < numRays; i++) {
+    const rayAngle = player.angle - FOV/2 + (i / numRays) * FOV;
+    const cos = Math.cos(rayAngle), sin = Math.sin(rayAngle);
+    let dist = 0;
+    let hit = false;
+    let stepSize = 0.02;
+
+    while (!hit && dist < 20) {
+      dist += stepSize;
+      const nx = player.x + cos * dist;
+      const ny = player.y + sin * dist;
+      if (isWall(nx, ny)) { hit = true; break; }
+    }
+
+    // Correct fisheye
+    const corrDist = dist * Math.cos(rayAngle - player.angle);
+    zBuffer[i * 2] = corrDist;
+
+    const sliceH = Math.min(H, (H / corrDist) * 0.9);
+    const top = halfH - sliceH / 2;
+
+    // Wall color based on level
+    const brightness = Math.max(0, 1 - corrDist / 10);
+    const r = parseInt(lvl.color.slice(1,3), 16);
+    const g = parseInt(lvl.color.slice(3,5), 16);
+    const b = parseInt(lvl.color.slice(5,7), 16);
+
+    // Alternate darker/lighter strips for texture feel
+    const shade = (Math.floor(player.x + cos * dist) + Math.floor(player.y + sin * dist)) % 2 === 0 ? 1 : 0.75;
+
+    ctx.fillStyle = `rgba(${Math.floor(r*brightness*shade)},${Math.floor(g*brightness*shade)},${Math.floor(b*brightness*shade)},1)`;
+    ctx.fillRect(i * 2, top, 2, sliceH);
+
+    // Wall edge darkening
+    if (Math.abs(corrDist) < 0.5) {
+      ctx.fillStyle = 'rgba(0,0,0,.3)';
+      ctx.fillRect(i * 2, top, 2, sliceH);
+    }
+  }
+
+  // Draw enemies (sprite rendering)
+  const sortedEnemies = [...enemies.filter(e => e.active)].sort((a,b) => {
+    const da = (a.x-player.x)**2 + (a.y-player.y)**2;
+    const db = (b.x-player.x)**2 + (b.y-player.y)**2;
+    return db - da;
+  });
+
+  for (const enemy of sortedEnemies) {
+    const dx = enemy.x - player.x;
+    const dy = enemy.y - player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 0.3) continue;
+
+    const angle = Math.atan2(dy, dx) - player.angle;
+    let normAngle = angle;
+    while (normAngle < -Math.PI) normAngle += 2*Math.PI;
+    while (normAngle > Math.PI) normAngle -= 2*Math.PI;
+
+    if (Math.abs(normAngle) > FOV / 1.8) continue;
+
+    const screenX = (0.5 + normAngle / FOV) * W;
+    const spriteH = Math.min(H * 1.2, (H / dist) * 0.85);
+    const spriteW = spriteH * 0.75;
+    const spriteTop = H/2 - spriteH/2;
+
+    const rayIdx = Math.floor(screenX / 2);
+    if (rayIdx < 0 || rayIdx >= zBuffer.length) continue;
+    if (dist > zBuffer[rayIdx]) continue;
+
+    // Shadow/glow
+    if (enemy.hitFlash > 0) {
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#ff0000';
+    } else {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = enemy.color;
+    }
+
+    // Background circle
+    ctx.fillStyle = enemy.hitFlash > 0 ? 'rgba(255,50,50,.4)' : `${enemy.color}33`;
+    ctx.beginPath();
+    ctx.ellipse(screenX, H/2, spriteW*0.5, spriteH*0.4, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Emoji sprite
+    const fontSize = Math.max(12, Math.min(80, spriteH * 0.6));
+    ctx.font = `${fontSize}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(enemy.emoji, screenX, H/2 - spriteH*0.1);
+
+    // Health bar
+    if (dist < 4) {
+      const barW = Math.max(20, spriteW * 0.8);
+      const barH = 5;
+      const barX = screenX - barW/2;
+      const barY = spriteTop + spriteH + 4;
+      ctx.fillStyle = '#300';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#e74c3c';
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+
+      if (dist < 2.5) {
+        ctx.font = `${Math.max(8, fontSize*0.2)}px 'Share Tech Mono'`;
+        ctx.fillStyle = '#fff';
+        ctx.fillText(enemy.name, screenX, barY + 14);
+      }
+    }
+  }
+
+  // Particles
+  for (const p of particles) {
+    if (!p.active) continue;
+    const alpha = p.life / p.maxLife;
+    ctx.fillStyle = `rgba(255,${Math.floor(150*alpha)},0,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, p.r * alpha, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+// ========================
+// MINIMAP
+// ========================
+function drawMinimap() {
+  const map = getMap();
+  const sz = 120;
+  const tileW = sz / map[0].length;
+  const tileH = sz / map.length;
+
+  mmCtx.clearRect(0,0,sz,sz);
+  mmCtx.fillStyle = 'rgba(0,0,0,.8)';
+  mmCtx.fillRect(0,0,sz,sz);
+
+  for (let r = 0; r < map.length; r++) {
+    for (let c = 0; c < map[r].length; c++) {
+      if (map[r][c] === 1) {
+        mmCtx.fillStyle = '#333';
+        mmCtx.fillRect(c*tileW, r*tileH, tileW-1, tileH-1);
+      }
+    }
+  }
+
+  // Enemies
+  for (const e of enemies) {
+    if (!e.active) continue;
+    mmCtx.fillStyle = LEVELS[currentLevel].color;
+    mmCtx.beginPath();
+    mmCtx.arc(e.x*tileW, e.y*tileH, 2, 0, Math.PI*2);
+    mmCtx.fill();
+  }
+
+  // Player
+  const px = player.x * tileW;
+  const py = player.y * tileH;
+  mmCtx.fillStyle = '#00ff88';
+  mmCtx.beginPath();
+  mmCtx.arc(px, py, 3, 0, Math.PI*2);
+  mmCtx.fill();
+
+  // Direction
+  mmCtx.strokeStyle = '#00ff88';
+  mmCtx.lineWidth = 1;
+  mmCtx.beginPath();
+  mmCtx.moveTo(px, py);
+  mmCtx.lineTo(px + Math.cos(player.angle)*8, py + Math.sin(player.angle)*8);
+  mmCtx.stroke();
+}
+
+// ========================
+// HUD UPDATE
+// ========================
+function updateHUD() {
+  document.getElementById('hud-health').textContent = Math.max(0, player.health);
+  document.getElementById('hud-kills').textContent = player.kills;
+  const lvl = LEVELS[currentLevel];
+  document.getElementById('level-title-hud').textContent = `NIVEL ${currentLevel+1} — ${lvl.name}`;
+  document.getElementById('level-subtitle-hud').textContent = lvl.subtitle;
+  document.getElementById('weapon-img').textContent = lvl.weapon;
+
+  // Face
+  const face = player.health > 50 ? lvl.faceOk : (player.health > 0 ? lvl.face : lvl.faceDead);
+  document.getElementById('hud-face').textContent = face;
+
+  // Ammo bar
+  const bar = document.getElementById('ammo-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < player.maxAmmo; i++) {
+    const pip = document.createElement('div');
+    pip.className = 'ammo-pip' + (i >= player.ammo ? ' used' : '');
+    bar.appendChild(pip);
+  }
+}
+
+// ========================
+// SHOOT
+// ========================
+function shoot() {
+  if (shootCooldown > 0 || !gameActive) return;
+  if (player.ammo <= 0) { showMsg("SIN MUNICIÓN", "Recarga automática en 3 seg..."); player.ammo = player.maxAmmo; updateHUD(); return; }
+
+  player.ammo--;
+  shootCooldown = 18;
+  weaponFire = 8;
+  updateHUD();
+
+  // Weapon animation
+  const wi = document.getElementById('weapon-img');
+  wi.style.transform = 'translateY(-20px) scale(1.3)';
+  setTimeout(() => wi.style.transform = '', 100);
+
+  // Find closest enemy in crosshair
+  let hit = null;
+  let bestScore = 999;
+  const FOV = Math.PI / 2.8;
+
+  for (const e of enemies) {
+    if (!e.active) continue;
+    const dx = e.x - player.x;
+    const dy = e.y - player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > 8) continue;
+
+    const angle = Math.atan2(dy, dx);
+    let diff = angle - player.angle;
+    while (diff < -Math.PI) diff += 2*Math.PI;
+    while (diff > Math.PI) diff -= 2*Math.PI;
+
+    if (Math.abs(diff) < FOV / 5) {
+      // Check wall occlusion
+      let blocked = false;
+      for (let d = 0.2; d < dist - 0.2; d += 0.15) {
+        if (isWall(player.x + Math.cos(angle)*d, player.y + Math.sin(angle)*d)) { blocked = true; break; }
+      }
+      if (!blocked && dist < bestScore) { bestScore = dist; hit = e; }
+    }
+  }
+
+  if (hit) {
+    hit.hp--;
+    hit.hitFlash = 8;
+    const screenX = W/2 + (Math.random()-.5)*40;
+    const screenY = H/2 + (Math.random()-.5)*40;
+    spawnParticles(screenX, screenY);
+
+    // Show info
+    showMsg(`ATACANDO: ${hit.name}`, hit.info);
+
+    if (hit.hp <= 0) {
+      hit.active = false;
+      player.kills++;
+      updateHUD();
+      checkLevelComplete();
+    }
+  }
+}
+
+function spawnParticles(sx, sy) {
+  for (let i = 0; i < 8; i++) {
+    particles.push({
+      sx: sx + (Math.random()-.5)*20,
+      sy: sy + (Math.random()-.5)*20,
+      r: 3 + Math.random()*5,
+      life: 20, maxLife: 20,
+      active: true,
+    });
+  }
+}
+
+function checkLevelComplete() {
+  const alive = enemies.filter(e => e.active).length;
+  if (alive === 0) {
+    setTimeout(() => {
+      gameActive = false;
+      showLevelComplete();
+    }, 400);
+  }
+}
+
+function showLevelComplete() {
+  const lc = document.getElementById('level-complete');
+  const fact = document.getElementById('complete-fact-text');
+  fact.innerHTML = LEVELS[currentLevel].completeFact;
+
+  const nextBtn = document.getElementById('next-level-btn');
+  if (currentLevel < LEVELS.length - 1) {
+    nextBtn.textContent = 'SIGUIENTE NIVEL ▶';
+    nextBtn.style.display = '';
+  } else {
+    nextBtn.textContent = '🏆 VER RESULTADOS';
+    nextBtn.style.display = '';
+  }
+
+  // Unlock next
+  if (currentLevel + 1 > unlockedLevels) {
+    unlockedLevels = currentLevel + 1;
+    updateLocks();
+  }
+
+  lc.classList.add('visible');
+}
+
+function nextLevel() {
+  document.getElementById('level-complete').classList.remove('visible');
+  if (currentLevel < LEVELS.length - 1) {
+    startLevel(currentLevel + 1);
+  } else {
+    showScreen('win-screen');
+  }
+}
+
+// ========================
+// ENEMY AI
+// ========================
+function updateEnemies() {
+  const map = getMap();
+  for (const e of enemies) {
+    if (!e.active) continue;
+    if (e.hitFlash > 0) e.hitFlash--;
+
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    e.stateTimer++;
+
+    if (dist < 5) {
+      e.state = 'chase';
+    } else {
+      e.state = 'idle';
+    }
+
+    if (e.state === 'chase') {
+      if (dist > 0.8) {
+        const speed = 0.012;
+        const nx = e.x + (dx/dist) * speed;
+        const ny = e.y + (dy/dist) * speed;
+        if (!isWall(nx, e.y)) e.x = nx;
+        if (!isWall(e.x, ny)) e.y = ny;
+      } else if (e.stateTimer % 60 === 0) {
+        // Attack player
+        player.health -= e.dmg * 0.3;
+        updateHUD();
+        flashDamage();
+        if (player.health <= 0) {
+          player.health = 0;
+          showMsg("ELIMINADO", "El conflicto te venció. Recargando...");
+          setTimeout(() => buildLevel(currentLevel), 2500);
+        }
+      }
+    }
+  }
+}
+
+function flashDamage() {
+  const f = document.getElementById('damage-flash');
+  f.classList.add('hit');
+  setTimeout(() => f.classList.remove('hit'), 100);
+}
+
+// ========================
+// MSG BOX
+// ========================
+function showMsg(title, content) {
+  document.getElementById('msg-title').textContent = title;
+  document.getElementById('msg-content').textContent = content;
+  const box = document.getElementById('msg-box');
+  box.classList.add('visible');
+  msgTimer = 180;
+}
+
+// ========================
+// MOVEMENT
+// ========================
+function handleMovement() {
+  if (!gameActive) return;
+
+  let moved = false;
+  if (keys['ArrowLeft'] || keys['a'] || keys['A']) { player.angle -= ROT_SPEED; moved=true; }
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) { player.angle += ROT_SPEED; moved=true; }
+
+  const cos = Math.cos(player.angle), sin = Math.sin(player.angle);
+  let nx = player.x, ny = player.y;
+
+  if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+    nx += cos * MOVE_SPEED; ny += sin * MOVE_SPEED; moved=true;
+  }
+  if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+    nx -= cos * MOVE_SPEED; ny -= sin * MOVE_SPEED; moved=true;
+  }
+
+  const margin = 0.25;
+  if (!isWall(nx, player.y)) player.x = nx;
+  if (!isWall(player.x, ny)) player.y = ny;
+
+  if (moved) weaponBob += 0.18;
+}
+
+// ========================
+// MAIN LOOP
+// ========================
+let lastTime = 0;
+let frameCount = 0;
+
+function gameLoop(ts) {
+  requestAnimationFrame(gameLoop);
+
+  // Don't render if canvas has no size yet
+  if (W === 0 || H === 0) { resizeCanvas(); return; }
+
+  const dt = ts - lastTime;
+  lastTime = ts;
+
+  if (gameActive) {
+    frameCount++;
+    handleMovement();
+    updateEnemies();
+
+    // Weapon bob
+    const wi = document.getElementById('weapon-img');
+    const bobY = Math.sin(weaponBob) * 6;
+    if (weaponFire > 0) { weaponFire--; wi.style.transform = `translateY(${-20 + bobY}px)`; }
+    else { wi.style.transform = `translateY(${bobY}px)`; }
+
+    if (shootCooldown > 0) shootCooldown--;
+
+    // Msg timer
+    if (msgTimer > 0) { msgTimer--; if (msgTimer === 0) document.getElementById('msg-box').classList.remove('visible'); }
+
+    // Particles
+    for (const p of particles) { if (!p.active) continue; p.life--; p.sy -= 1.5; if (p.life <= 0) p.active = false; }
+    particles = particles.filter(p => p.active);
+
+    // Health regen (slow)
+    if (frameCount % 180 === 0 && player.health < 100 && player.health > 0) {
+      player.health = Math.min(100, player.health + 3);
+      updateHUD();
+    }
+  }
+
+  // Always render so the scene is visible behind the intro overlay
+  if (document.getElementById('game-screen').classList.contains('active')) {
+    castRays();
+    drawMinimap();
+  }
+}
+
+// ========================
+// MOUSE LOOK
+// ========================
+let lastMouseX = null;
+document.getElementById('viewport').addEventListener('mousemove', (e) => {
+  if (!gameActive) return;
+  if (lastMouseX !== null) {
+    player.angle += (e.clientX - lastMouseX) * 0.003;
+  }
+  lastMouseX = e.clientX;
+});
+document.getElementById('viewport').addEventListener('mouseleave', () => { lastMouseX = null; });
+
+document.getElementById('viewport').addEventListener('click', () => {
+  if (gameActive) shoot();
+});
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  keys[e.key] = true;
+  if (e.key === ' ' || e.key === 'Enter') shoot();
+  if (e.key === 'e' || e.key === 'E') {
+    // Show nearest enemy info
+    let nearest = null, nearDist = 999;
+    for (const en of enemies) {
+      if (!en.active) continue;
+      const d = Math.hypot(en.x-player.x, en.y-player.y);
+      if (d < nearDist) { nearDist=d; nearest=en; }
+    }
+    if (nearest && nearDist < 3) showMsg(nearest.name, nearest.info);
+  }
+  e.preventDefault();
+});
+document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+// ========================
+// MOBILE CONTROLS
+// ========================
+function setupMobileControls() {
+  const map = {
+    'btn-w': ['w', true], 'btn-s': ['s', true],
+    'btn-a': ['a', true], 'btn-d': ['d', true],
+  };
+  for (const [id, [key]] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    el.addEventListener('touchstart', (e) => { keys[key]=true; e.preventDefault(); }, {passive:false});
+    el.addEventListener('touchend', (e) => { keys[key]=false; e.preventDefault(); }, {passive:false});
+  }
+  document.getElementById('btn-shoot').addEventListener('touchstart', (e) => { shoot(); e.preventDefault(); }, {passive:false});
+  document.getElementById('btn-interact').addEventListener('touchstart', (e) => {
+    // Show nearest enemy info
+    let nearest = null, nearDist = 999;
+    for (const en of enemies) {
+      if (!en.active) continue;
+      const d = Math.hypot(en.x-player.x, en.y-player.y);
+      if (d < nearDist) { nearDist=d; nearest=en; }
+    }
+    if (nearest) showMsg(nearest.name, nearest.info);
+    e.preventDefault();
+  }, {passive:false});
+}
+
+// ========================
+// SCREEN MANAGEMENT
+// ========================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  gameActive = false;
+}
+
+function showLevelSelect() {
+  showScreen('select-screen');
+  updateLocks();
+}
+
+function updateLocks() {
+  for (let i = 1; i <= 3; i++) {
+    const lock = document.getElementById(`lock-${i+1}`);
+    if (lock) lock.style.display = i <= unlockedLevels ? 'none' : '';
+  }
+}
+
+function startLevel(lvlIdx) {
+  if (lvlIdx > unlockedLevels) return;
+  currentLevel = lvlIdx;
+
+  showScreen('game-screen');
+
+  // Resize canvas NOW that the screen is visible and has real dimensions
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    const lvl = LEVELS[lvlIdx];
+    document.getElementById('intro-level-num').textContent = `NIVEL ${lvlIdx+1} — EPISODIO ${lvlIdx+1}`;
+    document.getElementById('intro-icon').textContent = lvl.icon;
+    document.getElementById('intro-level-name').textContent = `CONFLICTO ${lvl.name}`;
+    document.getElementById('intro-desc').textContent = lvl.intro;
+    const intro = document.getElementById('level-intro');
+    intro.classList.remove('hidden');
+    document.getElementById('level-complete').classList.remove('visible');
+    buildLevel(lvlIdx);
+    updateHUD();
+    gameActive = false;
+  });
+}
+
+function dismissIntro() {
+  const intro = document.getElementById('level-intro');
+  intro.classList.add('hidden');
+  gameActive = true;
+  showMsg(`¡NIVEL ${currentLevel+1} — ${LEVELS[currentLevel].name}!`, `Elimina ${enemies.filter(e=>e.active).length} enemigos para completar el nivel. E = Ver info del enemigo.`);
+}
+
+// ========================
+// BOOT
+// ========================
+function init() {
+  initCanvas();
+  setupMobileControls();
+  updateLocks();
+  requestAnimationFrame(gameLoop);
+}
+
+init();
+</script>
+</body>
+</html>
